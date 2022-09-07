@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    command: >
+      --save 60 1 --loglevel debug
+    networks:
+      - backend
+  postgres:
+    image: postgres:12-alpine
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    networks:
+      - backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DATABASE=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT}
+      - JWT_SECRET=${JWT_SECRET}
+      - SECURITY_MEMORY=${SECURITY_MEMORY}
+      - SECURITY_ITERATIONS=${SECURITY_ITERATIONS}
+      - SECURITY_PARALLELISM=${SECURITY_PARALLELISM}
+      - SECURITY_SALT_LENGTH=${SECURITY_SALT_LENGTH}
+      - SECURITY_KEY_LENGTH=${SECURITY_KEY_LENGTH}
+      - LOG_LEVEL=${LOG_LEVEL}
+      - HTTP_PORT=${HTTP_PORT}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER}
+      - BASIC_AUTH_PASSWORD=${BASIC_AUTH_PASSWORD}
+      - SPEC_PATH=${SPEC_PATH}
+      - SPEC_URL=${SPEC_URL}
+      - SPEC_TITLE=${SPEC_TITLE}
+      - SPEC_DESCRIPTION=${SPEC_DESCRIPTION}
+      - UPLOAD_PATH=/data
+      - WAIT_HOSTS=postgres:5432
+      - CDN_URL=${CDN_URL}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SENTRY_DSN=${SENTRY_DSN}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - backend
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    volumes:
+      - ${UPLOAD_PATH}:/data
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d/
+      - ./data/nginx/dhparam:/etc/nginx/dhparam
+      - ./data/certbot/conf/:/etc/nginx/ssl/
+      - ./data/certbot/data:/usr/share/nginx/html/letsencrypt
+    depends_on:
+      - backend
+      - certbot
+    networks:
+      - backend
+  certbot:
+    image: certbot/certbot:latest
+    command: certonly --webroot -v --webroot-path=/usr/share/nginx/html/letsencrypt --email space.coding.programmer@gmail.com --agree-tos --no-eff-email -d internal.lhbrokerage.com
+    volumes:
+      - ./data/certbot/conf/:/etc/letsencrypt
+      - ./data/certbot/logs/:/var/log/letsencrypt
+      - ./data/certbot/data:/usr/share/nginx/html/letsencrypt
+
+networks:
+  backend:

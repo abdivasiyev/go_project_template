@@ -1,0 +1,9 @@
+*.env
+.DS_STORE
+vendor/
+backend
+.idea/
+coverage.out
+data/
+docs/
+logs/
