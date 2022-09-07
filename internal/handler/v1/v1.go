@@ -98,8 +98,10 @@ func (h *Handler) registerRoutes(router gin.IRouter) {
 	}))
 
 	authRequired := apiV1.Group("/")
-	authRequired.Use(h.middleware.BearerAuth())
-	authRequired.Use(h.middleware.HasAccess())
+	authRequired.Use(
+		h.middleware.BearerAuth(),
+		h.middleware.HasAccess(),
+	)
 
 	// basic auth
 	h.registerDoc(basicAuth)
